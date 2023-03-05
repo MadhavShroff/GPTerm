@@ -4,57 +4,106 @@ import os
 import requests
 from pprint import pprint
 import random
+import json
+import time
 
-current_shell = os.getenv('SHELL').split('/')[-1] # e.g. bash, zsh, etc.
+# current_shell = os.getenv('SHELL').split('/')[-1] # e.g. bash, zsh, etc.
+current_shell = 'bash'
+# Input file containing shell commands
+# Output file containing prompt-completion pairs
+input_file = './data/history_data.txt'
+output_file = './data/finetuning_dataset.txt'
+# Get OpenAI API key from environment variable
+key = os.getenv('OPENAI_API_KEY')
 # Create data directory if it doesn't exist
 if not os.path.exists('./data'):
     os.mkdir('./data')
-input_file = './data/history_data.txt'
-output_file = './data/finetuning_dataset.txt'
-key = os.getenv('OPENAI_API_KEY')
-
 # Set default value for number of calls
-default_number_of_calls = 3
+default_number_of_calls = 5
+min_command_length = 2
 
+# Parse arguments
 parser = argparse.ArgumentParser(description='Curl calls for shell script descriptions.')
-parser.add_argument('-n', '--num-pairs', default=default_number_of_calls, type=int,
-                    help=f'number of curl calls to make, default: {default_number_of_calls}')
+parser.add_argument('-n', '--num-pairs', default=default_number_of_calls, type=int, help=f'number of curl calls to make, default: {default_number_of_calls}')
+# Add argument for 0/1 flag to use shellcheck for generating fine_tuning_dataset
+parser.add_argument('-sc', '--shellcheck', default=0, type=int, help=f'0: do not use shellcheck, 1: use shellcheck, default: 0')
 args = parser.parse_args()
 
-with open(input_file, 'r') as f_in:
-    lines = f_in.readlines()
+# Method to check if syntax of a command is valid
+def is_valid_command(command):
+    # call shellcheck on command
+    # if shellcheck returns 0, command is valid
+    # else, command is invalid
+    # return True if command is valid, else return False
+    command = "#!/bin/bash\n cd\\" + command
+    # Assert that current shell is bash
+    assert current_shell == 'bash'
+    return os.WEXITSTATUS(os.system(f'shellcheck -s {current_shell} -x {command} > /dev/null 2>&1')) == 0    
 
+# Read input file
+#TODO: Add interactive mode to allow user to choose from a random sample of commands
+# Interactive mode allows user to enter the size of the sample
+# Interactive mode allows user to generate random samples until they are satisfied with the sample
+# Interactive mode also allows user to choose whether to use shellcheck or not
+# Interactive mode is optional. Default parameter values can be used to generate the dataset. 
+# defaults: sample_size = 5, use_shellcheck = False. 
+def get_lines(input_file):
+    with open(input_file, 'r') as f_in:
+        lines = f_in.readlines()
+    if len(lines) == 0:
+        print(f'Error: {input_file} is empty.')
+        exit(1)
+    # Randomly sample lines from input file
+    sample = random.sample([x for x in lines if len(x) >= min_command_length], args.num_pairs)
+    
+    # If shellcheck is enabled, filter out invalid commands
+    if args.shellcheck == 1:
+        sample = [command for command in sample if is_valid_command(command)]
+    return sample
 # Print error message and exit if input file is empty
-if len(lines) == 0:
-    print(f'Error: {input_file} is empty.')
-    exit(1)
 
 count = 0
+def remove_duplicates(commands):
+    seen = set()
+    for command in commands:
+        if command not in seen:
+            seen.add(command)
+            yield command
+
 with open(output_file, 'a+') as f_out:
-    for command_i in random.sample(lines, args.number_of_calls):
-        if count >= args.number_of_calls:
+    for command_i in get_lines(input_file):
+        if count >= args.num_pairs:
             break
 
         command_i = command_i.strip()
-        pprint("Request:")
-        pprint(f'Give a one line description of this {current_shell} shell script: "{command_i}"')
-        # command_i = "git clone https://github.com/MadhavShroff/HypothesizerDebugger; open HypothesizerDebugger; cd Hypothesizer; git add .; git commit -m \"Updated UI\""
+        if command_i == 'cd' or command_i == 'ls' or command_i == 'pwd' :
+            print(f'Skipping {command_i}.')
+            continue
+        print(f'Requested   : Give a one line description of this {current_shell} shell script: "{command_i}"')
+        # Add a pause to avoid rate limiting
+        time.sleep(0.5)
         response = requests.post('https://api.openai.com/v1/chat/completions', headers={
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {key}'
         }, json={
             'model': 'gpt-3.5-turbo',
             'messages': [
-                {'role': 'system', 'content': 'Output a single sentence, first-person prompt that preceeds the shell script the user provides. Brevity is key.'},
+                {'role': 'system', 
+                    'content': 'Print a single sentence, first-person prompt that preceeds the shell script provided by the user. \
+                    Brevity is key. If the script is invalid, the prompt should be ERROR only.'},
                 {'role': 'user', 'content': f'Write the natural task description that may produce this {current_shell} shell script: "mkdir images && mv *.jpg images"'},
                 {'role': 'system', 'content': 'Move all jpegs to a new folder called images'},
                 {'role': 'user', 'content': f'Write the natural task description that may produce this {current_shell} shell script: "{command_i}"'},
             ]
         }).json()
-        pprint(response)
-        prompt_completion = {
-          "completion": command_i,
-          "prompt": response['choices'][0]['message']['content']
-        }
-        f_out.write(str(prompt_completion) + '\n')
+        try :
+            print("Response    : " + response['choices'][0]['message']['content'])
+            prompt_completion = {
+                "prompt": response['choices'][0]['message']['content'] + "\n\n###\n\n",
+                "completion": " " + command_i + "\n\n###\n\n"
+            }
+            # Convert to JSON string using json.dumps() and write to file
+            f_out.write(json.dumps(prompt_completion) + '\n')
+        except:
+            print(response)
         count += 1

@@ -3,6 +3,13 @@
 Command line tool for generating prompts to perform tasks in the terminal. 
 ex. `gpterm "Move all jpegs to a new folder called images` -> `mkdir images && mv *.jpg images`
 
+## WARNING
+This is a work in progress. The AI may output commands that are dangerous to run. The AI is also not perfect. It may output commands that are not what you want. Please check the output before running the command. There exist several potential improvements that can be made, by way of altering the fine_tuning dataset, tweaking hyperparameters, and prompt engineering.
+
+Your zsh_history or bash_history file will be read and parsed into a dataset for finetuning the model. The dataset will be saved LOCALLY to data/finetuning_dataset.txt. The finetuned model will then be sent to the OpenAI fine tuning API using your API key. The model after fine tuning will be used to generate prompts for the user to perform tasks in the terminal. The user can then enter the prompt and the fine tuned model will fetch the command. 
+
+Know that, from terminal commands history, any API keys, ssh details, instance IPs, or any other private information will sent to the OpenAI API. OpenAI has a [privacy policy](https://beta.openai.com/privacy). Please be aware of the privacy limitations of the API you are using.
+
 ## Installation
     
     ```bash

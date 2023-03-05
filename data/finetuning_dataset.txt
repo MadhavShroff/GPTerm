@@ -1,6 +1,11 @@
-{'completion': 'CD Programming\\ Assignment\\ 1', 'prompt': 'Change the current directory to the "Programming Assignment 1" folder.'}
-{'completion': 'ls', 'prompt': 'List all the files in the current working directory.'}
-{'completion': 'ls', 'prompt': 'List all files and directories in the current directory.'}
-{'completion': 'mv PayPal PAYPAL', 'prompt': 'Rename the file named PayPal to PAYPAL.'}
-{'completion': 'git commit -m "Minor Fixes"', 'prompt': 'Commit minor fixes to the Git repository.'}
-{'completion': 'ls', 'prompt': 'List all files in the current directory.'}
+{"prompt": "Create a new folder called \"result\".\n\n###\n\n", "completion": " mkdir result\n\n###\n\n"}
+{"prompt": "Install the package called \\\"serve\\\" globally using npm.\n\n###\n\n", "completion": " npm install -g serve\\\n\n###\n\n"}
+{"prompt": "Install the HTML package using npm.\n\n###\n\n", "completion": " npm install html\n\n###\n\n"}
+{"prompt": "Display the list of files and directories in the current folder.\n\n###\n\n", "completion": " ls\\\n\n###\n\n"}
+{"prompt": "Create a new folder named client-folder.\n\n###\n\n", "completion": " mkdir client-folder\n\n###\n\n"}
+{"prompt": "Show me the last command I ran.\n\n###\n\n", "completion": " history -100 -1\n\n###\n\n"}
+{"prompt": "ERROR. \n\nThe correct syntax of the telnet command should not use the \"https://\" prefix for the website.\n\n###\n\n", "completion": " telnet https://dwheeler.com/dwheeler.html\n\n###\n\n"}
+{"prompt": "Package all .class files from the \"code\" directory into a new JAR file called \"pa1.jar\" and specify the main class to run when the JAR is executed.\n\n###\n\n", "completion": " jar cfm pa1.jar \"Main-Class: Main.ckass\" code/*.class\n\n###\n\n"}
+{"prompt": "Connect to Amazon EC2 instance with the specified private key and IP address.\n\n###\n\n", "completion": " ssh -i \"KP2.pem\" ubuntu@ec2-52-6-167-159.compute-1.amazonaws.com\n\n###\n\n"}
+{"prompt": "Start the project using Node Package Manager.\n\n###\n\n", "completion": " npm start\n\n###\n\n"}
+{"prompt": "Execute the `bash.sh` shell script using python version 3.\n\n###\n\n", "completion": " python3 bash.sh\n\n###\n\n"}
