@@ -1,0 +1,6 @@
+{'completion': 'CD Programming\\ Assignment\\ 1', 'prompt': 'Change the current directory to the "Programming Assignment 1" folder.'}
+{'completion': 'ls', 'prompt': 'List all the files in the current working directory.'}
+{'completion': 'ls', 'prompt': 'List all files and directories in the current directory.'}
+{'completion': 'mv PayPal PAYPAL', 'prompt': 'Rename the file named PayPal to PAYPAL.'}
+{'completion': 'git commit -m "Minor Fixes"', 'prompt': 'Commit minor fixes to the Git repository.'}
+{'completion': 'ls', 'prompt': 'List all files in the current directory.'}
