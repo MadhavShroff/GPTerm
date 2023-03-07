@@ -23,16 +23,16 @@ Know that, from terminal commands history, any API keys, ssh details, instance I
         export OPENAI_API_KEY=<your openai api key>
 
         # This will generate a dataset for finetuning the model, stores (pair, completion) pairs in data/finetuning_dataset.txt. -n or --num-pairs is the number of pairs to generate
-        python3.11 generate_finetuning_dataset.py -n 100 
+        python3.11 generate_finetuning_dataset.py -n 1000
 
-        # Things yet to implememnt:
+        # This will prepare the dataset for finetuning the model. It will store the prepared dataset in data/finetuning_dataset_prepared.jsonl
+        openai tools fine_tunes.prepare_data -f ./data/finetuning_dataset.jsonl
 
-        # Finetune the model using the created dataset
-        # The finetuned model reference is stored, and used to generate commands based on user input
-        python3.11 finetune_model.py
+        # Create a Finetuned model using the created dataset (this often takes minutes, but can take hours if there are many jobs in the queue or your dataset is large)
+        openai api fine_tunes.create -t "./data/finetuning_dataset_prepared.jsonl"
 
-        # Finally, use the finetuned model to generate commands based on user input
-        python3.11 generate_command_example.py
+        # Finally, specify the fine tuned model id in an environment variable
+        export OPENAI_FINETUNED_MODEL_ID=<your finetuned model id>
 
         # Install the command line tool
         python3.11 setup.py install
@@ -60,8 +60,9 @@ The prompt-completion pairs are then saved to a file. An example is in data/fine
 
 2. The base gpt3 model is fine tuned using the prompt-completion pairs. The fine tuned model is then saved to a file.
 
-3. The fine tuned model is used to generate prompts for the user to perform tasks in the terminal. The user can then run the prompt and the fine tuned model will complete the command. ex:
+3. The fine tuned model is used to generate prompts for the user to perform tasks in the terminal. The user can then run the prompt and the fine tuned model will complete the command. The hope is that through fine tuning, the model will be able to generate prompts that have more contextual accuracy than a general base model.
 
+ex:
     ```bash
         # user input
         gpterm "rename all files in the current directory to lowercase"

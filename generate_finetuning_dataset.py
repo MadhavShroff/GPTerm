@@ -12,7 +12,7 @@ current_shell = 'bash'
 # Input file containing shell commands
 # Output file containing prompt-completion pairs
 input_file = './data/history_data.txt'
-output_file = './data/finetuning_dataset.txt'
+output_file = './data/finetuning_dataset.jsonl'
 # Get OpenAI API key from environment variable
 key = os.getenv('OPENAI_API_KEY')
 # Create data directory if it doesn't exist
@@ -54,8 +54,13 @@ def get_lines(input_file):
         print(f'Error: {input_file} is empty.')
         exit(1)
     # Randomly sample lines from input file
+    if(args.num_pairs > len(lines)):
+        print(f'Warning: {args.num_pairs} is greater than the number of lines in {input_file}.')
+        print(f'Using {len(lines)} lines instead.')
+        args.num_pairs = len(lines)
     sample = random.sample([x for x in lines if len(x) >= min_command_length], args.num_pairs)
-    
+    # remove duplicates
+    sample = list(remove_duplicates(sample))
     # If shellcheck is enabled, filter out invalid commands
     if args.shellcheck == 1:
         sample = [command for command in sample if is_valid_command(command)]
@@ -70,6 +75,22 @@ def remove_duplicates(commands):
             seen.add(command)
             yield command
 
+def call_openai_api(command):
+    return requests.post('https://api.openai.com/v1/chat/completions', headers={
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {key}'
+    }, json={
+        'model': 'gpt-3.5-turbo',
+        'messages': [
+            {'role': 'system', 
+                'content': 'Write a one-line, first-person prompt that preceeds the shell script provided by the user. \
+                Brevity is key. If the script is invalid, the prompt should be ERROR only.'},
+            {'role': 'user', 'content': f'Write the natural task description that may produce this {current_shell} shell script: "mkdir images && mv *.jpg images"'},
+            {'role': 'system', 'content': 'Move all jpegs to a new folder called images'},
+            {'role': 'user', 'content': f'Write the natural task description that may produce this {current_shell} shell script: "{command_i}"'},
+        ]
+    }).json()
+
 with open(output_file, 'a+') as f_out:
     for command_i in get_lines(input_file):
         if count >= args.num_pairs:
@@ -79,31 +100,32 @@ with open(output_file, 'a+') as f_out:
         if command_i == 'cd' or command_i == 'ls' or command_i == 'pwd' :
             print(f'Skipping {command_i}.')
             continue
-        print(f'Requested   : Give a one line description of this {current_shell} shell script: "{command_i}"')
+        print(f'Requested   : {command_i}')
         # Add a pause to avoid rate limiting
-        time.sleep(0.5)
-        response = requests.post('https://api.openai.com/v1/chat/completions', headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {key}'
-        }, json={
-            'model': 'gpt-3.5-turbo',
-            'messages': [
-                {'role': 'system', 
-                    'content': 'Print a single sentence, first-person prompt that preceeds the shell script provided by the user. \
-                    Brevity is key. If the script is invalid, the prompt should be ERROR only.'},
-                {'role': 'user', 'content': f'Write the natural task description that may produce this {current_shell} shell script: "mkdir images && mv *.jpg images"'},
-                {'role': 'system', 'content': 'Move all jpegs to a new folder called images'},
-                {'role': 'user', 'content': f'Write the natural task description that may produce this {current_shell} shell script: "{command_i}"'},
-            ]
-        }).json()
-        try :
-            print("Response    : " + response['choices'][0]['message']['content'])
-            prompt_completion = {
-                "prompt": response['choices'][0]['message']['content'] + "\n\n###\n\n",
-                "completion": " " + command_i + "\n\n###\n\n"
-            }
-            # Convert to JSON string using json.dumps() and write to file
-            f_out.write(json.dumps(prompt_completion) + '\n')
-        except:
+        time.sleep(5)
+        response = call_openai_api(command_i)
+        # if error, print error message and continue
+        if 'error' in response and 'message' in response['error'] and response['error']['message'].startswith('Rate limit reached') :
+            print(f'Error: Rate limit reached. Sleeping for 20 seconds.')
+            time.sleep(20)
+            response = call_openai_api(command_i)
+        elif 'error' in response and 'message' in response['error'] :
+            print(f'Error: {response["error"]["message"]}')
+            continue
+        if 'choices' in response and response['choices'][0]['message']['content'].startswith("ERROR") :
+            print(f'Error: Invalid command {command_i}')
+            continue
+        if 'choices' in response and 'content' in response['choices'][0]['message'] :
+            try :
+                print("Response    : " + response['choices'][0]['message']['content'])
+                prompt_completion = {
+                    "prompt": response['choices'][0]['message']['content'] + "\n\n###\n\n",
+                    "completion": " " + command_i + "\n\n###\n\n"
+                }
+                # Convert to JSON string using json.dumps() and write to file
+                f_out.write(json.dumps(prompt_completion) + '\n')
+                count += 1
+            except:
+                print(response)
+        else :
             print(response)
-        count += 1

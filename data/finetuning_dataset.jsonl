@@ -1,0 +1,5 @@
+{"prompt": "Install the Babel plugin for styled-components as a development dependency using npm.\n\n###\n\n", "completion": " npm install --save-dev babel-plugin-styled-components\n\n###\n\n"}
+{"prompt": "Run the `dripper.py` python script and specify the URL argument as `127.0.0.1/login`.\n\n###\n\n", "completion": " python3 dripper.py -s 127.0.0.1/login\n\n###\n\n"}
+{"prompt": "Change directory to the folder named \"Tester\" located on the Desktop of the user with the username \"lappy\".\n\n###\n\n", "completion": " cd \"/Users/lappy/Desktop/Tester\"\n\n###\n\n"}
+{"prompt": "Start the application using NPM.\n\n###\n\n", "completion": " npm start\n\n###\n\n"}
+{"prompt": "Compile all Java files in the current directory, then start a new server listening on port 8000 with Main class as the entry point.\n\n###\n\n", "completion": " javac *.java; java -cp . Main server start 8000;\n\n###\n\n"}
