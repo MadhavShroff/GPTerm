@@ -17,6 +17,12 @@ output=$(curl -s https://api.openai.com/v1/completions \
   \"stop\": [\"\\n\\n###\\n\\n\"]
 }")
 
+if [ -z "$output" ]; then
+  echo "ERROR: curl returned an empty response"
+  # stop execution of the script
+  exit 1
+fi
+
 text=$(echo "$output" | jq -r '.choices[0].text')
 
 # If text is empty or  "null", print the output
