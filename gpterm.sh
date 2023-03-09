@@ -16,5 +16,12 @@ output=$(curl -s https://api.openai.com/v1/completions \
   \"presence_penalty\": 0,
   \"stop\": [\"\\n\\n###\\n\\n\"]
 }")
+
 text=$(echo "$output" | jq -r '.choices[0].text')
-echo "$text"
+
+# If text is empty or  "null", print the output
+if [ -z "$text" ] || [ "$text" = "null" ]; then
+  echo "$output"
+else
+  echo "$text"
+fi
