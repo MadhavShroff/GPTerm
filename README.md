@@ -1,71 +1,82 @@
 # GPTerm
 
-Command line tool for generating prompts to perform tasks in the terminal. 
-ex. `gpterm "Move all jpegs to a new folder called images` -> `mkdir images && mv *.jpg images`
+Command line tool for generating POSIX Shell commands from Natural language prompts to perform tasks in the terminal. 
 
-## WARNING
-This is a work in progress. The AI may output commands that are dangerous to run. The AI is also not perfect. It may output commands that are not what you want. Please check the output before running the command. There exist several potential improvements that can be made, by way of altering the fine_tuning dataset, tweaking hyperparameters, and prompt engineering.
+For example, 
+`$ gpterm "Move all jpegs to a new folder called images` -> `mkdir images && mv *.jpg images`
 
-Your zsh_history or bash_history file will be read and parsed into a dataset for finetuning the model. The dataset will be saved LOCALLY to data/finetuning_dataset.txt. The finetuned model will then be sent to the OpenAI fine tuning API using your API key. The model after fine tuning will be used to generate prompts for the user to perform tasks in the terminal. The user can then enter the prompt and the fine tuned model will fetch the command. 
+The default mode of operation uses text-davinci-003, as it shows the best performance. The model used can be modified in gpterm.sh
+
+The zsh_history or bash_history file will be read and parsed into a dataset for finetuning the model. The dataset will be saved to data/finetuning_dataset.txt. The finetuned model will then be sent to the OpenAI fine tuning API using your API key. This adds contextual awareness to the model, making it more useful. 
 
 Know that, from terminal commands history, any API keys, ssh details, instance IPs, or any other private information will sent to the OpenAI API. OpenAI has a [privacy policy](https://beta.openai.com/privacy). Please be aware of the privacy limitations of the API you are using.
 
+Note: OpenAi currently does not support fine tuning of the gpt-3.5-turbo model or any of the codex models. Fine tuning on the davinci models is available, but its performance and accuracy is not as good as the untuned gpt-3.5-turbo model. (Tested on 1121 prompt-completion pairs)
+Hopefully, finetuning of the codex models when allowed will 
+
 ## Installation
     
-    ```bash
-        # So far...
-        git clone https://github.com/MadhavShroff/GPTerm
-        cd gpterm
-        python3.11 -m venv venv
-        source venv/bin/activate
-        pip3 install openai
-        python3.11 read_zsh_history.py # This will read and parse your zsh_history file into data/history_data.txt
+        1. Clone the repository
+        $ git clone https://github.com/MadhavShroff/GPTerm
+        $ cd gpterm
+
+        2. Read, clean and write your zsh_history file into data/history_data.txt. 
+        (To skip the history gathering part, go to step 5. The text-davinci-003 model is used, and it's performance is decent out of the box)
+
+        If using bash
+        $ bash read_bash_history.sh
+        
+        If using zsh
+        $ python3.11 read_zsh_history.py 
+
+        3. Receive an API Key ("sk-...") from OpenAi and store in environment variable 
         export OPENAI_API_KEY=<your openai api key>
 
-        # This will generate a dataset for finetuning the model, stores (pair, completion) pairs in data/finetuning_dataset.txt. -n or --num-pairs is the number of pairs to generate
-        python3.11 generate_finetuning_dataset.py -n 1000
+        4a. (Optionally) generate a dataset for finetuning the model, stores (pair, completion) pairs in data/finetuning_dataset.txt. -n or --num-pairs is the number of pairs to generate. use '-sc' or '--shellcheck' (0/1) to disable/enable shellcheck. You must have it installed if using this option. 
+        (Note: This will take some time if you are on OpenAi's the free trial, as rate limiting is in effect) 
+        $ python3.11 generate_finetuning_dataset.py -n 1000
 
-        # This will prepare the dataset for finetuning the model. It will store the prepared dataset in data/finetuning_dataset_prepared.jsonl
-        openai tools fine_tunes.prepare_data -f ./data/finetuning_dataset.jsonl
+        4b. Prepare the dataset for finetuning the model. This command will store the prepared dataset in data/finetuning_dataset_prepared.jsonl
+        $ openai tools fine_tunes.prepare_data -f ./data/finetuning_dataset.jsonl
 
-        # Create a Finetuned model using the created dataset (this often takes minutes, but can take hours if there are many jobs in the queue or your dataset is large)
-        openai api fine_tunes.create -t "./data/finetuning_dataset_prepared.jsonl"
+        4c. Create a Finetuned model using the generated dataset (this often takes minutes, but can take hours if there are many jobs in the queue or your dataset is large)
+        $ openai api fine_tunes.create -t "./data/finetuning_dataset_prepared.jsonl"
 
-        # Finally, specify the fine tuned model id in an environment variable
-        export OPENAI_FINETUNED_MODEL_ID=<your finetuned model id>
+        4d. Finally, specify the fine tuned model id in an environment variable
+        $ export OPENAI_FINETUNED_MODEL_ID=<your finetuned model id>
 
-        # Install the command line tool
-        python3.11 setup.py install
+        5. Install the command line tool (The tool will be installed even if finetuning is not performed)
+        $ bash install.sh
 
-        # To run the command line tool
-        gpterm "rename all files in the current directory to lowercase"
+        6. Run the command line tool
+        $ gpterm "rename all files in the current directory to lowercase"
+        ╰─ for file in *; do mv -- "$file" "${file:l}"; done
+        
+(Note: You must copy the returned text and paste it in the command line to run it.)
 
-        -> for file in *; do mv -- "$file" "${file:l}"; done
-    ```
+## WARNING
+This is a work in progress. The AI may output commands that are dangerous to run. The AI is also not perfect. There are no guardrails to prevent it from returning dangerous code that may delete or modify files irreparably. Please check the output before running the command. There exist several potential improvements that can be made, by way of altering the fine_tuning dataset, tweaking hyperparameters, and prompt engineering.
 
-## How it (will be) built
+## How it is built
 
-GPTerm is built using the [GPT-3](https://openai.com/blog/openai-api/) API. The idea is to use a finetuned model of the API to generate prompts for the user to perform tasks in the terminal. The fine tuning is done using the zsh_history or bash_history files. The prompt-completion pairs are generated using openai's code description API. 
+GPTerm is built using the [GPT-3](https://openai.com/blog/openai-api/) API. The idea is to use a finetuned model of the API to generate prompts for the user to perform tasks in the terminal. The fine tuning is done using the zsh_history or bash_history files. The prompt-completion pairs are generated using openai's code description API. Yes, AI is used to finetune a different AI. Open to PRs debtaing philosophical implications. 
 
-1. On install, config setup will find the zsh_history or bash_history file. It will be compiled into a list of prompts for the code description API. The API returns a list of completions for the prompt. ex: 
+1. On install, config setup will find the zsh_history or bash_history file. Each command from your shell history is sent to OpenAI's gpt-3.5-turbo chat completion API. It generates the Natural Language description of the command, and generates a prompt completion pair as such: 
 
-    ```JSONL
+    ```JSON
         [{
-            "command": "ssh user1@178.34.25.24 -i ~/.ssh/id_rsa",
-            "potential prompt": "ssh into server 178.34.25.24 as user1 using my private key"
-        } ...]
+            "prompt": "Compile all Java files in the current directory, then start a new server listening on port 8000 with Main class as the entry point.\n\n###\n\n", 
+            "completion": " javac *.java; java -cp . Main server start 8000;\n\n###\n\n"
+        }]
     ```
     
-The prompt-completion pairs are then saved to a file. An example is in data/finetuning_dataset.txt. 
+The list of prompt-completion pairs are then saved to a .jsonl file. See data/finetuning_dataset.txt for an example.
 
-2. The base gpt3 model is fine tuned using the prompt-completion pairs. The fine tuned model is then saved to a file.
+2. The base davinci model is fine tuned using the prompt-completion pairs. The fine tuned model id is then saved to an environment variable.
 
-3. The fine tuned model is used to generate prompts for the user to perform tasks in the terminal. The user can then run the prompt and the fine tuned model will complete the command. The hope is that through fine tuning, the model will be able to generate prompts that have more contextual accuracy than a general base model.
+3. The fine tuned model is used to generate contextually aware commands for the user to perform tasks in the terminal.
 
-ex:
-    ```bash
-        # user input
-        gpterm "rename all files in the current directory to lowercase"
+For example :
 
-        for file in *; do mv -- "$file" "${file:l}"; done
-    ```
+    $ gpterm "rename all files in the current directory to lowercase"
+    ╰─ for file in *; do mv -- "$file" "${file:l}"; done
